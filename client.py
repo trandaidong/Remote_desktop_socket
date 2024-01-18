@@ -1,5 +1,11 @@
 import tkinter
 import tkinter.messagebox
+import sendfile_client as dt
+import tkinter as tk
+import tkinter.ttk as ttk
+import pickle
+from tkinter import Canvas,  Text, Button, PhotoImage,  filedialog, messagebox
+import sendfile_client
 import tkinter as tk
 from tkinter import *
 from tkinter import font
@@ -13,6 +19,7 @@ import re
 import cv2
 import time
 import sys
+import os
 
 # Khung thời gian
 IDLE = 0.05
@@ -20,11 +27,12 @@ IDLE = 0.05
 #scale = 0.75
 # Mặc định cho màn 1920x1080
 scale=0.6
+SEPARATOR = "<SEPARATOR>"
 # Kích thước màn hình truyền dẫn gốc
 fixw, fixh = 0, 0
 # socket  kích thước bộ đệm
 bufsize = 1024
-
+BUFFER_SIZE = 1024
 check = False
 
 image_save = None
@@ -57,15 +65,16 @@ class STARTPAGE(tk.Frame):
         about_btn = tk.Button(nav,text="About",command=lambda: Appcontroller.showPage(About),bg="black",fg="red")
         connect_btn = tk.Button(nav, text="Connection",command= Appcontroller.SetSocket,bg="black",fg="red")
         livescreen_btn = tk.Button(nav, text="Live Screen",command= Appcontroller.LiveScreen,bg="black",fg="red")
+        sendfile_btn = tk.Button(nav, text="Send File", command=Appcontroller.SendFile, bg="black", fg="red")
         quit_btn = tkinter.Button(nav, text = "Quit", command = Appcontroller.Quit ,bg="black",fg="red")
         name_label.pack(side="top",pady=20)
         enter_host.pack(pady=70)
 
         ip_label.grid(row=0, column=0, padx=10, pady=4, ipadx=0, ipady=0)
-        Appcontroller.ip_entry.grid(row=0, column=1, padx=10, pady=4, ipadx=0, ipady=0)
+        Appcontroller.ip_entry.grid(row=0, column=1, padx=10, pady=4, ipadx=30, ipady=0)
 
         port_label.grid(row=1, column=0, padx=10, pady=4, ipadx=0, ipady=0)
-        Appcontroller.port_entry.grid(row=1, column=1, padx=10, pady=4, ipadx=0, ipady=0)
+        Appcontroller.port_entry.grid(row=1, column=1, padx=10, pady=4, ipadx=30, ipady=0)
 
         enter_host.configure(bg="black")
 
@@ -74,10 +83,11 @@ class STARTPAGE(tk.Frame):
         val2.set('80')
 
         nav.pack()
-        about_btn.grid(row=0,column=0,padx=10, pady=0, ipadx=30, ipady=5)
-        connect_btn.grid(row=0, column=1, padx=10, pady=0, ipadx=20, ipady=5)
-        livescreen_btn.grid(row=0, column=2, padx=10, pady=0, ipadx=20, ipady=5)
-        quit_btn.grid(row=0, column=4,padx=10, pady=0, ipadx=20, ipady=5)
+        about_btn.grid(row=0,column=0,padx=10, pady=0, ipadx=10, ipady=5)
+        connect_btn.grid(row=0, column=1, padx=10, pady=0, ipadx=10, ipady=5)
+        livescreen_btn.grid(row=0, column=3, padx=10, pady=0, ipadx=10, ipady=5)
+        sendfile_btn.grid(row=0, column=2,padx=10, pady=0, ipadx=10, ipady=5)
+        quit_btn.grid(row=0, column=4 , padx=10, pady=0, ipadx=10, ipady=5)
         nav.configure(bg="black")
 
 class About(tk.Frame):
@@ -86,7 +96,6 @@ class About(tk.Frame):
         bold_font = font.Font(weight="bold",size=14)
 
         name_label=tk.Label(self,text='22CTT2 - HCMUS',font=bold_font)
-
 
         lable_member1=tk.Label(self,text='22120053 - Lê Thành Đạt',font=('Arial',12))
         lable_member2=tk.Label(self,text='22120065 - Trần Đại Đồng',font=('Arial',12))
@@ -124,6 +133,7 @@ class RemoteDesktop(object): # Ứng dụng này kế thừa cái tk.Tk (tkinter
         self.livescreen = None
         self.livescreen_thread = None
         self.showscreen = None
+        self.sendfile = None
         self.showscreen_thread = None
         self.last_send = time.time()
         self.ip_entry=tk.Entry()
@@ -215,9 +225,7 @@ class RemoteDesktop(object): # Ứng dụng này kế thừa cái tk.Tk (tkinter
             scale=0.84
         h = int(h * scale)
         w = int(w * scale)
-        #h, w = 639, 1136
 
-        #img = cv2.resize(img, (w, h))
         imsh = cv2.cvtColor(img, cv2.COLOR_RGB2RGBA) 
         imi = Image.fromarray(imsh)
         imgTK = ImageTk.PhotoImage(image=imi) 
@@ -228,10 +236,6 @@ class RemoteDesktop(object): # Ứng dụng này kế thừa cái tk.Tk (tkinter
         
         canvas.place(x=30, y=40)
         canvas.create_image(0, 0, anchor=NW, image=imgTK)
-        #canvas.configure(image=self.imgTk)
-        #canvas.photo = imgTK
-        #h = int(h * scale)
-        #w = int(w * scale)
 
         while True:
             try:
@@ -255,15 +259,18 @@ class RemoteDesktop(object): # Ứng dụng này kế thừa cái tk.Tk (tkinter
                 imt = cv2.resize(img, (w, h))
                 imsh = cv2.cvtColor(imt, cv2.COLOR_RGB2RGBA)
                 imi = Image.fromarray(imsh)
-                #canvas.configure(image=self.imgTk)
                 imgTK.paste(imi)
                 image_save = imsh
-                #canvas.photo=imi
 
             except:
                 self.livescreen = None
                 self.DoLiveScreen()
                 return
+
+    def SendFile(self):
+        self.client.sendall(bytes("SENDFILE", "utf8"))
+        tmp = dt.DirectoryTree_UI(self.root,self.client)
+        return
 
     def BindEvents(self, canvas):
         def EventDo(data):
