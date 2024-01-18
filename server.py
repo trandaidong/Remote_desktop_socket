@@ -1,27 +1,31 @@
 import tkinter
 import struct
 import socket
+from tkinter import filedialog
 from PIL import ImageGrab
 import cv2
 import numpy as np
 import threading
 import time
 import pyautogui as ag
+import sendfile_server as dt
 import mouse
 import keyboard
+import tkinter as tk
 from PIL import Image, ImageTk
 from tkinter import font
-# 画面周期
+import os
+import pickle
+import os
+import sendfile_server
+SEPARATOR = "<SEPARATOR>"
+BUFFER_SIZE = 4096
 IDLE = 0.05
-# 鼠标滚轮灵敏度
 SCROLL_NUM = 50
-# 压缩比 1-100 数值越小，压缩比越高，图片质量损失越严重
 IMQUALITY = 100
-# 压缩后np图像
 img = None
-# 编码后的图像
 imbyt = None
-
+SEPARATOR ="<SEPARATOR>"
 bufsize = 4096
 
 official_virtual_keys = {
@@ -191,6 +195,7 @@ official_virtual_keys = {
     0xdc: '\\',
 }
 
+
 def recvall(sock):
     data = b''
     while True:
@@ -201,49 +206,62 @@ def recvall(sock):
                 if len(part) < bufsize:
                     break
             except socket.error:
-                return 
+                return
         if data:
             break
     return data.decode().strip()
 
+
 class STARTPAGE(tkinter.Frame):
-    def __init__(self,parrent,Appcontroller):
-        tkinter.Frame.__init__(self,parrent)
-        bold_font = font.Font(weight="bold",size=20)
+    def __init__(self, parrent, Appcontroller):
+        tkinter.Frame.__init__(self, parrent)
+        bold_font = font.Font(weight="bold", size=20)
         self.configure(bg="black")
-        name_label=tkinter.Label(self,text='SERVER',font=bold_font,fg="red",highlightbackground="black",bg="black")
+        name_label = tkinter.Label(self, text='SERVER', font=bold_font, fg="red", highlightbackground="black",
+                                   bg="black")
         name_label.pack(pady=5)
 
-        #button_log=tkinter.Button(self,text="Login",command=lambda: Appcontroller.showPage(HomePage))
-       # button_log.configure(width=10)
+        # button_log=tkinter.Button(self,text="Login",command=lambda: Appcontroller.showPage(HomePage))
+        # button_log.configure(width=10)
 
         original_image = Image.open("images/ic_open.png")
-        resized_image = original_image.resize((100, 100),  Image.ANTIALIAS if hasattr(Image, 'ANTIALIAS') else Image.NEAREST)
+        resized_image = original_image.resize((100, 100),
+                                              Image.ANTIALIAS if hasattr(Image, 'ANTIALIAS') else Image.NEAREST)
         self.photo = ImageTk.PhotoImage(resized_image)
-        self.open_button = tkinter.Button(self, image=self.photo, command=lambda: Appcontroller.showPage(HomePage),bg="red",fg="red")
+        self.open_button = tkinter.Button(self, image=self.photo, command=lambda: Appcontroller.showPage(HomePage),
+                                          bg="red", fg="red")
         self.open_button.pack(pady=50)
 
+
 class HomePage(tkinter.Frame):
-    def __init__(self,parrent,Appcontroller):
-        tkinter.Frame.__init__(self,parrent)
+    def __init__(self, parrent, Appcontroller):
+        tkinter.Frame.__init__(self, parrent)
+        # Lấy ip máy gốc
         self.remote_ip = socket.gethostbyname(socket.gethostname())
-        #self.remote_ip = '172.172.6.253'
+        #self.remote_ip = '192.168.50.115'
         #self.remote_ip='127.0.0.1'
         self.remote_port = 80
         self.configure(bg="black")
-        val1=tkinter.StringVar()
-        val2=tkinter.StringVar()
-        bold_font = font.Font(weight="bold",size=24)
-        host_font = font.Font(weight="bold",size=14)
-        enter_host=tkinter.Frame(self)
-        nav=tkinter.Frame(self)
-        ip_label = tkinter.Label(enter_host, text="IP",fg="red",font=host_font,highlightbackground="black",bg="black")
-        ip_entry = tkinter.Entry(enter_host, show=None, font=('Arial', 20), textvariable=val1,width=10,justify="center",bd=3,fg="red",bg="black")# Gia trị nhập vào được lưu vào biến val
-        port_label = tkinter.Label(enter_host, text="PORT",fg="red",highlightbackground="black",bg="black",font=host_font)
-        port_entry = tkinter.Entry(enter_host, show=None, font=('Arial', 20), textvariable=val2,width=10,justify="center",bd=3,fg="red",bg="black")# Gia trị nhập vào được lưu vào biến val
-        button_in=tkinter.Button(nav,text="CONNECTION",command=lambda: Appcontroller.buttonServer_click(),bg="black",fg="red")
-        button_out=tkinter.Button(nav,text="DISCONNECTION",command=lambda: Appcontroller.showPage(STARTPAGE),bg="black",fg="red")
-        #print(str(self.remote_ip))
+        val1 = tkinter.StringVar()
+        val2 = tkinter.StringVar()
+        bold_font = font.Font(weight="bold", size=24)
+        host_font = font.Font(weight="bold", size=14)
+        enter_host = tkinter.Frame(self)
+        nav = tkinter.Frame(self)
+        ip_label = tkinter.Label(enter_host, text="IP", fg="red", font=host_font, highlightbackground="black",
+                                 bg="black")
+        ip_entry = tkinter.Entry(enter_host, show=None, font=('Arial', 20), textvariable=val1, width=10,
+                                 justify="center", bd=3, fg="red", bg="black")  # Gia trị nhập vào được lưu vào biến val
+        port_label = tkinter.Label(enter_host, text="PORT", fg="red", highlightbackground="black", bg="black",
+                                   font=host_font)
+        port_entry = tkinter.Entry(enter_host, show=None, font=('Arial', 20), textvariable=val2, width=10,
+                                   justify="center", bd=3, fg="red",
+                                   bg="black")  # Gia trị nhập vào được lưu vào biến val
+        button_in = tkinter.Button(nav, text="CONNECTION", command=lambda: Appcontroller.buttonServer_click(),
+                                   bg="black", fg="red")
+        button_out = tkinter.Button(nav, text="DISCONNECTION", command=lambda: Appcontroller.showPage(STARTPAGE),
+                                    bg="black", fg="red")
+        # print(str(self.remote_ip))
         val1.set(self.remote_ip)
         val2.set(self.remote_port)
         enter_host.pack(pady=40)
@@ -257,43 +275,43 @@ class HomePage(tkinter.Frame):
         nav.pack()
         button_in.grid(row=0, column=0, padx=10, pady=4, ipadx=10, ipady=10)
         button_out.grid(row=0, column=1, padx=10, pady=4, ipadx=10, ipady=10)
-        #Appcontroller.buttonServer_click()
+        # Appcontroller.buttonServer_click()
+
 
 class RemoteDesktop:
     def __init__(self, root):
         self.server = None
-        self.remote_ip = socket.gethostbyname(socket.gethostname())
-        #self.remote_ip = '172.172.6.253'
+        self.remote_ip=""
+        #self.remote_ip = socket.gethostbyname(socket.gethostname())
+        #self.remote_ip = '192.168.50.115'
         #self.remote_ip='127.0.0.1'
         self.remote_port = 80
         self.conn = None
         self.addr = None
         self.lock = threading.Lock()
-        
+        self.path =None
         self.root = root
         self.root.geometry('400x300')
         self.root.title("SERVER REMOTE DESKTOP")
-        self.root.resizable(height=False,width=False)
+        self.root.resizable(height=False, width=False)
 
-        container=tkinter.Frame()
+        container = tkinter.Frame()
 
-        container.pack(side="top",fill="both",expand=True)
-        container.grid_rowconfigure(0,weight=1)
-        container.grid_columnconfigure(0,weight=1)
+        container.pack(side="top", fill="both", expand=True)
+        container.grid_rowconfigure(0, weight=1)
+        container.grid_columnconfigure(0, weight=1)
 
-        self.frames={}
-        for F in(STARTPAGE,HomePage):
-            frame=F(container,self)
-            frame.grid(row=0,column=0,sticky="nsew")
-            self.frames[F]=frame
+        self.frames = {}
+        for F in (STARTPAGE, HomePage):
+            frame = F(container, self)
+            frame.grid(row=0, column=0, sticky="nsew")
+            self.frames[F] = frame
 
         self.frames[STARTPAGE].tkraise()
-    def showPage(self,FrameClass):
+
+    def showPage(self, FrameClass):
         self.frames[FrameClass].tkraise()
-        #open_button = tkinter.Button(fstart, text="OPEN", command = self.buttonServer_click)
-        #close_button = tkinter.Button(fhost, text="CLOSE", command = self.buttonServer_click)
-        #self.open_button.pack(pady=50)
-        
+
     def buttonServer_click(self):
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server.bind((self.remote_ip, self.remote_port))
@@ -308,14 +326,19 @@ class RemoteDesktop:
                     while True:
                         self.conn, self.addr = self.server.accept()
                         self.sendscreen_thread = threading.Thread(target=self.handle, args=(self.conn,))
-                        self.detect_mouse_key_thread =threading.Thread(target=self.control, args=(self.conn,))
-                        self.sendscreen_thread.start() 
+                        self.detect_mouse_key_thread = threading.Thread(target=self.control, args=(self.conn,))
+                        self.sendscreen_thread.start()
                         self.detect_mouse_key_thread.start()
+                elif (str == "SENDFILE"):
+                    print("send file1")
+                    print("oki")
+                    self.RecvFile(self.conn)
+                    print("oki 2")
                 elif (str == "QUIT"):
                     self.conn.close()
                     self.server.close()
                     break
-                else: 
+                else:
                     continue
         except socket.error:
             self.conn.close()
@@ -341,26 +364,21 @@ class RemoteDesktop:
             _, timbyt = cv2.imencode(".jpg", imgnpn, [cv2.IMWRITE_JPEG_QUALITY, IMQUALITY])
             imnp = np.asarray(timbyt, np.uint8)
             imgnew = cv2.imdecode(imnp, cv2.IMREAD_COLOR)
-            # 计算图像差值
             imgs = imgnew ^ img
             if (imgs != 0).any():
-                # 画质改变
                 pass
             else:
                 continue
             imbyt = timbyt
             img = imgnew
-            # 无损压缩
             _, imb = cv2.imencode(".png", imgs)
-            l1 = len(imbyt)  # 原图像大小
-            l2 = len(imb)  # 差异图像大小
+            l1 = len(imbyt)  
+            l2 = len(imb)
             if l1 > l2:
-                # 传差异化图像
                 lenb = struct.pack(">BI", 0, l2)
                 conn.sendall(lenb)
                 conn.sendall(imb)
             else:
-                # 传原编码图像
                 lenb = struct.pack(">BI", 1, l1)
                 conn.sendall(lenb)
                 conn.sendall(imbyt)
@@ -392,6 +410,7 @@ class RemoteDesktop:
                         keyboard.press(k)
                     elif op == 117:
                         keyboard.release(k)
+
         try:
             base_len = 6
             while True:
@@ -407,6 +426,12 @@ class RemoteDesktop:
                 Op(key, op, x, y)
         except:
             return
+        
+    def RecvFile(self, sock):
+        dt.directory(sock)
+        return
+
+
 try:
     root = tkinter.Tk()
     App = RemoteDesktop(root)
